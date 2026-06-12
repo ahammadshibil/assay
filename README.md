@@ -1,14 +1,22 @@
 # Assay
 
-**Provenance diligence for deeptech founders and companies.**
+**Provenance + scientific-claim diligence for deeptech founders and companies.**
+
+[![CI](https://github.com/ahammadshibil/assay/actions/workflows/ci.yml/badge.svg)](https://github.com/ahammadshibil/assay/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 
 Generic startup-intelligence APIs (Crunchbase, Harmonic, PitchBook) answer *who
 raised and who invested*. They don't answer the question that actually decides a
 deeptech deal: **is the science real, does the founder own the IP, and has anyone
 non-dilutive already underwritten the work?**
 
-Assay answers that by triangulating three public data layers nobody bothers to
-wire together:
+Assay has two modes, both built on free public APIs:
+
+- **Provenance** — is the founder a real researcher, do they *own* the IP (or does their old lab?), and has anyone non-dilutive funded the work?
+- **Science** ([below](#science-mode--confirm-the-claim-not-the-founder)) — take a technical *claim* and grade it against the primary literature, with **independent replication** as the headline signal.
+
+Provenance triangulates three public data layers nobody bothers to wire together:
 
 | Layer | Source | Question it answers |
 |---|---|---|
