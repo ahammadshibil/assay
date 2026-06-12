@@ -23,13 +23,28 @@ python eval/scifact_eval.py --data-dir eval/data --limit 80 --mode grader
 
 ## Results — the eval loop in action
 
-| Retrieval | Verifiable recall | NEI-found (upper bound) | TOO_GENERIC |
-|---|---|---|---|
-| **v1** — single full-sentence query | 23/52 = **44%** | 12/26 = 46% | 0/78 |
-| **v2** — + content-term query, unioned | 31/40 = **78%** | 13/20 = 65% | 0/60 |
+| Retrieval | Verifiable recall | NEI-found (upper bound) | gap | TOO_GENERIC |
+|---|---|---|---|---|
+| **v1** — single full-sentence query | 23/52 = **44%** | 12/26 = 46% | −2 | 0/78 |
+| **v2** — + content-term query, unioned | 31/40 = **78%** | 13/20 = 65% | **+13** | 0/60 |
+| **v3** — + PubMed source, merged | 27/32 = **84%** | 14/16 = 88% | −4 | 0/48 |
 
-(Stratified samples of the dev set; v1 n=78, v2 n=60. The lift is far larger than
-sample noise.)
+(Stratified dev samples; v1 n=78, v2 n=60, v3 n=48 — smaller as added sources slow
+the run. Trends dwarf sample noise.)
+
+### The eval told us when to stop
+
+`v1 → v2` (better query) was a clean win: recall up, and the gap to the NEI rate
+widened from noise to **+13** — retrieving the *right* paper, not just more.
+
+`v2 → v3` (add PubMed) lifted recall again (78% → 84%) **but the gap inverted** to −4:
+PubMed finds biomedical literature for almost *any* claim, NEI included. That's the
+saturation point — **retrieval is no longer the bottleneck; the support/refute
+judgement is.** Adding a fourth source would buy more recall and *worse*
+discrimination. The next real lever is the `--synthesize` adjudicator (does the paper
+actually support the claim — `grader` mode), not more retrieval. PubMed stays in for
+the recall and its authoritative review/retraction flags, but the eval is explicit
+that we've hit the ceiling of what *finding* papers can do.
 
 **v2 grade distribution** (2026-06-12):
 

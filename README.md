@@ -185,10 +185,12 @@ asserts the integrity property (failed source ⇒ `*_source_unavailable`, never
 
 Science mode is benchmarked against [**SciFact**](https://github.com/allenai/scifact),
 the standard scientific-claim-verification dataset — see [`eval/`](eval/). The eval
-loop already paid off: a single full-sentence query scored **44%** retrieval recall;
-adding a stopword-stripped content query (`_content_query`) and unioning the results
-lifted it to **78%**. Retrieval was the bottleneck, not judgment — the same conclusion
-SciFact's own paper reaches — and now every change to it has a number attached.
+loop drove two improvements and then told us when to stop: a single full-sentence
+query scored **44%** recall → adding a content-term query (`_content_query`) lifted it
+to **78%** → adding PubMed reached **84%**, at which point the NEI rate caught up and
+the eval showed **retrieval is no longer the bottleneck — judgment is** (the
+`--synthesize` layer). Every change has a number attached, including the decision to
+quit optimizing retrieval.
 
 ## Verticals
 

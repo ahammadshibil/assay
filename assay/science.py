@@ -228,6 +228,28 @@ def _is_founder_authored(work: Work, founder_surnames: set[str]) -> bool:
     return bool(founder_surnames & auth_surnames)
 
 
+def _work_key(w: Work) -> str | None:
+    if w.doi:
+        return "doi:" + w.doi.lower().replace("https://doi.org/", "").strip("/ ")
+    if w.title:
+        return "t:" + re.sub(r"\W+", "", w.title.lower())[:64]
+    return None
+
+
+def _merge_works(primary: list[Work], extra: list[Work]) -> list[Work]:
+    """Union two source result sets, de-duped by DOI (then normalised title). The
+    first list wins on conflict — OpenAlex carries citation counts, so it stays the
+    canonical copy; PubMed only adds works OpenAlex missed."""
+    seen = {k for k in (_work_key(w) for w in primary) if k}
+    out = list(primary)
+    for w in extra:
+        k = _work_key(w)
+        if k and k in seen:
+            continue
+        if k:
+            seen.add(k)
+        out.append(w)
+    return out
 
 
 # ----------------------------------------------------------------- engine ----
@@ -236,15 +258,26 @@ async def verify_claim(
     founders: list[str] | None = None,
     mailto: str | None = None,
     max_works: int = 25,
+    use_pubmed: bool = True,
 ) -> ClaimReport:
-    """Verify a scientific claim against the primary literature and grade it."""
+    """Verify a scientific claim against the primary literature and grade it.
+
+    Retrieves from OpenAlex and (for biomedical recall) PubMed, then grades the
+    union. Either source failing is fine — the other carries the run."""
     founders = founders or []
     report = ClaimReport(claim=claim, founders=founders)
 
     works, total, err = await LiteratureClient(mailto=mailto).search(claim, per_page=max_works)
+    errors = [err] if err else []
+    if use_pubmed:
+        from .pubmed import PubMedClient  # noqa: PLC0415 — keep import optional
+        pm_works, pm_err = await PubMedClient(email=mailto).search(claim, retmax=max_works)
+        if pm_err:
+            errors.append(pm_err)
+        works = _merge_works(works, pm_works)
     report.total_hits = total
-    if err:
-        report.source_errors.append(err)
+    report.source_errors.extend(errors)
+    err = errors[0] if errors else None
 
     # Annotate founder authorship if we know whose claim it is.
     fsur = _surnames(founders)

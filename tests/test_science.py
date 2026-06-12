@@ -62,7 +62,7 @@ def _verify(works, founders, total=None, error=None):
     orig = LiteratureClient.search
     LiteratureClient.search = fake_search
     try:
-        return asyncio.run(verify_claim("the claim", founders=founders))
+        return asyncio.run(verify_claim("the claim", founders=founders, use_pubmed=False))
     finally:
         LiteratureClient.search = orig
 
@@ -151,7 +151,7 @@ def _verify_claim_with(claim, works, total, founders=()):
     orig = LiteratureClient.search
     LiteratureClient.search = fake_search
     try:
-        return asyncio.run(verify_claim(claim, founders=list(founders)))
+        return asyncio.run(verify_claim(claim, founders=list(founders), use_pubmed=False))
     finally:
         LiteratureClient.search = orig
 
