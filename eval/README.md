@@ -21,34 +21,39 @@ python eval/scifact_eval.py --data-dir eval/data --limit 80
 python eval/scifact_eval.py --data-dir eval/data --limit 80 --mode grader
 ```
 
-## Result (end2end, 78-claim stratified sample, 2026-06-12)
+## Results — the eval loop in action
+
+| Retrieval | Verifiable recall | NEI-found (upper bound) | TOO_GENERIC |
+|---|---|---|---|
+| **v1** — single full-sentence query | 23/52 = **44%** | 12/26 = 46% | 0/78 |
+| **v2** — + content-term query, unioned | 31/40 = **78%** | 13/20 = 65% | 0/60 |
+
+(Stratified samples of the dev set; v1 n=78, v2 n=60. The lift is far larger than
+sample noise.)
+
+**v2 grade distribution** (2026-06-12):
 
 ```
 gold           n  grade distribution (Assay)
-SUPPORT       26  PEER_REVIEWED:15, UNSUPPORTED:11
-CONTRADICT    26  UNSUPPORTED:18, PEER_REVIEWED:8
-NEI           26  UNSUPPORTED:14, PEER_REVIEWED:10, PREPRINT_ONLY:2
-
-recall on verifiable claims : 23/52 = 44%
-NEI evidence-found rate     : 12/26 = 46%   (upper bound — see caveat)
-claims flagged TOO_GENERIC  : 0/78          (guard sanity: correct, no false fires)
+SUPPORT       20  PEER_REVIEWED:15, UNSUPPORTED:5
+CONTRADICT    20  PEER_REVIEWED:15, UNSUPPORTED:4, PREPRINT_ONLY:1
+NEI           20  PEER_REVIEWED:13, UNSUPPORTED:7
 ```
 
 ## What this says — honestly
 
-- **Recall is 44%.** Assay finds peer-reviewed evidence for a genuinely verifiable
-  claim less than half the time. That is **low**, and it should be read as a real
-  result, not hidden.
-- **Retrieval is the bottleneck, not judgment.** The verifiable-recall (44%) and the
-  NEI-found rate (46%) are nearly identical — Assay's single keyword query over a
-  terse claim sentence barely discriminates "real science exists" from "not enough
-  info." This is exactly the finding SciFact's own paper reports (open-domain
-  verification is retrieval-bound) and the limitation flagged throughout the README.
-- **The guard is well-behaved** — zero false `TOO_GENERIC` fires on specific
-  biomedical claims.
-- **The fix is now measurable.** Better retrieval — query expansion, multiple
-  sub-queries, adding PubMed/Semantic Scholar alongside OpenAlex, or a real retriever
-  — should move this number. That's the point of having it.
+- **Retrieval was the bottleneck, and it's measurable.** v1's verifiable-recall (44%)
+  and NEI-found rate (46%) were nearly identical — a single keyword query over a terse
+  claim sentence barely discriminated "real science exists" from "not enough info,"
+  exactly the retrieval-bound failure SciFact's own paper reports.
+- **One targeted fix nearly doubled recall.** v2 adds a second, stopword-stripped
+  *content query* and unions the results (`science._content_query`). Recall went
+  **44% → 78%**, and the gap to the NEI rate widened from ~2 points to 13 — so it
+  retrieves the right paper more often, not just *more* papers.
+- **The guard stayed clean** — zero false `TOO_GENERIC` across both runs.
+- **Still room up.** NEI-found at 65% reflects open-web over-retrieval (see caveat);
+  adding PubMed/Semantic Scholar, or the `--synthesize` judgment layer on top, is the
+  next lever. The point is each change now has a number attached.
 
 ## Caveat (don't misquote the number)
 

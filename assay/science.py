@@ -25,6 +25,7 @@ optional LLM adjudication in synthesize.synthesize_science.
 """
 from __future__ import annotations
 
+import asyncio
 import re
 
 import httpx
@@ -61,6 +62,21 @@ def _distinctive_terms(text: str) -> set[str]:
             if len(part) >= 4 and part not in _GENERIC_TERMS and part not in _STOP:
                 terms.add(part)
     return terms
+
+
+def _content_query(claim: str) -> str | None:
+    """A second, leaner query: the claim with stopwords/buzzwords stripped. A full
+    declarative sentence drifts OpenAlex relevance; the content terms retrieve the
+    on-topic paper a sentence query misses. (Empirically the biggest recall lever —
+    see eval/.)"""
+    keep, dterms = [], _distinctive_terms(claim)
+    if not dterms:
+        return None
+    for tok in re.findall(r"[A-Za-z0-9\-]+", claim):
+        if any(p in dterms for p in tok.lower().split("-")):
+            keep.append(tok)
+    q = " ".join(keep)
+    return q if q and q.lower() != claim.strip().lower() else None
 
 _TIMEOUT = httpx.Timeout(30.0)
 _UA = {
@@ -122,7 +138,32 @@ class LiteratureClient:
         self.mailto = mailto
 
     async def search(self, claim: str, per_page: int = 25) -> tuple[list[Work], int, str | None]:
-        params = {"search": claim, "per-page": per_page, "sort": "relevance_score:desc"}
+        """Retrieve candidate works. Runs the full claim AND a stopword-stripped
+        content query (when distinct), then unions by id — a single sentence query
+        misses the on-topic paper too often (see eval/)."""
+        queries = [claim.strip()]
+        cq = _content_query(claim)
+        if cq:
+            queries.append(cq)
+
+        runs = await asyncio.gather(*[self._search_one(q, per_page) for q in queries])
+        seen: dict = {}
+        total, errors = 0, []
+        for works, t, err in runs:
+            if err:
+                errors.append(err)
+                continue
+            total = max(total, t)
+            for w in works:
+                key = w.id or w.title
+                if key and key not in seen:
+                    seen[key] = w
+        if not seen and errors:
+            return [], 0, errors[0]
+        return list(seen.values()), total, None
+
+    async def _search_one(self, query: str, per_page: int) -> tuple[list[Work], int, str | None]:
+        params = {"search": query, "per-page": per_page, "sort": "relevance_score:desc"}
         if self.mailto:
             params["mailto"] = self.mailto
         try:
