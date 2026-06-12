@@ -181,6 +181,15 @@ The suite is network-free — it pins the parser field-paths against fixtures an
 asserts the integrity property (failed source ⇒ `*_source_unavailable`, never
 "none found"), so API drift fails loudly in CI.
 
+## Evaluation
+
+Science mode is benchmarked against [**SciFact**](https://github.com/allenai/scifact),
+the standard scientific-claim-verification dataset — see [`eval/`](eval/). The honest
+current number: **~44% retrieval recall** (Assay finds peer-reviewed evidence for a
+verifiable claim less than half the time). Retrieval is the bottleneck, not judgment —
+the same conclusion SciFact's own paper reaches for open-domain verification. It's
+measured so it can be improved.
+
 ## Verticals
 
 The core engine is one domain-agnostic agent. Verticals are **plug-in modules**
